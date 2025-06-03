@@ -1,5 +1,5 @@
 # University of Texas at Austin
-Python Interactive UI for Manual Waveform Marking
+Python Interactive UI for Manual Waveform Marking <br>
 Created by Isaac Xu and Dr. Chas Bolton
 # Download instructions
 Download python file and run requirements.txt 
