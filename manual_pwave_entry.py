@@ -4,17 +4,42 @@ import tkinter as tk
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from PIL import Image, ImageTk
+from tkinter import filedialog, messagebox 
 
-#waveforms = pd.read_csv('waveforms.csv')
-#n = len(waveforms)
+
+# Make the root window resizable
+root = tk.Tk()
+root.title('Waveform Labeling')
+root.geometry("1000x800")  # Optional starting size
+root.minsize(1000,800)    # Optional minimum size
+
+'''filename = filedialog.askopenfile(
+    title='Open waveform file',
+    filetypes=[('CSV files', '*.csv', ('All files', '*.*'))]
+)
+if filename:
+    print(f'File selected: {filename}')
+else:
+    messagebox.showwarning('No file selected')
+    root.destroy()
+    exit()
+
+try:
+    waveforms = pd.read_csv(filename)
+    n = len(waveforms[0])
+except:
+    messagebox.showerror('Error', f'Could not load file: {filename}')
+'''
+
 n = 100
 waveforms = np.random.randn(n,n)
 labels = np.full(n, -1)
 
 #tries to open output file marked_positions.csv, if it doesn't open it creates a 
 #1D numpy array filled with -1
+a = 'marked'
 try:
-    labels = pd.read_csv('marked_positions.csv')
+    labels = pd.read_csv(f'{a}_positiions.csv')
 except:
     labels = np.full(n, -1)
 
@@ -45,7 +70,7 @@ def redraw_plot():
 
     if labels[current_index] != -1:
         ax.axvline(labels[current_index], color='red', linestyle='-')
-        cursor_line = ax.axvline(0, color='red', linestyle='--', alpha=0.4)
+        cursor_line = ax.axvline(labels[current_index], color='red', linestyle='--', alpha=0.4)
     else:
         # Create a faint red line at x=0 to start, store reference
         cursor_line = ax.axvline(0, color='red', linestyle='--', alpha=0.4)
@@ -54,6 +79,15 @@ def redraw_plot():
     canvas.draw()
     update_button_states()
 
+def uploadfile():
+    filename = filedialog.askopenfilename(
+        title='Select Waveform Data',
+        filetypes=(('CSV files', '*.csv'), ('All files', '*.*'))
+    )
+    if filename:
+        print("Selected file:", filename)
+    else:
+        print('No file selected')
 
 #functions for navigating waveforms
 def prev_waveform():
@@ -96,11 +130,6 @@ def on_mouse_move(event):
             print("Error updating cursor line:", e)
 
 
-# Make the root window resizable
-root = tk.Tk()
-root.title('Waveform Labeling')
-root.geometry("1000x800")  # Optional starting size
-root.minsize(1000,800)    # Optional minimum size
 
 # Instructions frame (static height)
 top_frame = tk.Frame(root)
@@ -138,6 +167,8 @@ next_btn.pack(side=tk.LEFT, padx=5, pady=5)
 save_btn = tk.Button(controls, text="Save", command=save_labels_csv, width=12, height=2, font=("Arial", 10))
 save_btn.pack(side=tk.LEFT, padx=5, pady=5)
 
+file_btn = tk.Button(controls, text="Import File", command=uploadfile, width=12, height=2, font=("Arial", 10))
+file_btn.pack(side=tk.LEFT, padx=5, pady=5)
 
 
 #main loop
