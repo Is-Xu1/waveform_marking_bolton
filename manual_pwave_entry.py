@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from PIL import Image, ImageTk
 from tkinter import filedialog, messagebox 
-
+import h5py
+import sys
 
 # Make the root window resizable
 root = tk.Tk()
@@ -13,40 +14,56 @@ root.title('Waveform Labeling')
 root.geometry("1000x800")  # Optional starting size
 root.minsize(1000,800)    # Optional minimum size
 
-'''filename = filedialog.askopenfile(
+
+#initial file upload prompt, unless a file is uploaded, the rest of the code won't run properly
+filename = filedialog.askopenfilename(
     title='Open waveform file',
-    filetypes=[('CSV files', '*.csv', ('All files', '*.*'))]
+    filetypes=(('All supported', '*.csv *.hdf5 *.h5'),
+               ('CSV files', '*.csv'),
+               ('HDF5 files', '*.hdf5 *.hf'),
+               ('All files', '*.*'))
 )
 if filename:
     print(f'File selected: {filename}')
+if filename.endswith('.csv'):
+    try:
+        waveforms = pd.read_csv(filename).to_numpy()
+        n = len(waveforms)
+        sampling_rate = 100
+        component_order = ['Channel']
+    except:
+        messagebox.showerror('Error', 'Failed to open .csv {filename}')
+elif filename.endswith('.hdf5') or filename.endswith('.hdf'):
+    try:
+        with h5py.File(filename) as file:
+            dataset = file['data/bucket0']
+            waveforms = dataset[:,0,:]
+            sampling_rate = file['data_format/sampling_rate'][()]
+            component_order = file['data_format/component_order'][()]
+            n = waveforms.shape[0]
+    except:
+        messagebox.showerror('Error', 'Failed to open .hdf5 {filename}')
 else:
-    messagebox.showwarning('No file selected')
+    messagebox.showwarning('No file selected or unsupported file format')
     root.destroy()
     exit()
 
-try:
-    waveforms = pd.read_csv(filename)
-    n = len(waveforms[0])
-except:
-    messagebox.showerror('Error', f'Could not load file: {filename}')
-'''
-
-n = 100
+#test code
+'''n = 100
 waveforms = np.random.randn(n,n)
-labels = np.full(n, -1)
+labels = np.full(n, -1)'''
 
 #tries to open output file marked_positions.csv, if it doesn't open it creates a 
 #1D numpy array filled with -1
-a = 'marked'
 try:
-    labels = pd.read_csv(f'{a}_positiions.csv')
+    labels = pd.read_csv(f'{filename}_marked.csv')
 except:
     labels = np.full(n, -1)
 
 #tries to open output file marked_positions.csv, if it is successful it will set the current index to the first unmarked waveform
 #defaults to index 0 
 try:
-    marked_positions = pd.read_csv('marked_positions.csv')
+    marked_positions = pd.read_csv(f'{filename}_marked.csv')
     labels = marked_positions['marked_point'].to_numpy()
     unlabeled = marked_positions[marked_positions['marked_point'] == -1]
     current_index = unlabeled.index[0]
@@ -64,7 +81,7 @@ def on_click(event):
 
 #redraw plot function, if at the index the position has been marked already, draws the mark
 def redraw_plot():
-    global cursor_line, marker_set
+    global cursor_line
     ax.clear()
     ax.plot(waveforms[current_index])
 
@@ -80,14 +97,48 @@ def redraw_plot():
     update_button_states()
 
 def uploadfile():
+    global labels, current_index
     filename = filedialog.askopenfilename(
-        title='Select Waveform Data',
-        filetypes=(('CSV files', '*.csv'), ('All files', '*.*'))
+        title='Open waveform file',
+        filetypes=(('All supported', '*.csv *.hdf5 *.h5'),
+                ('CSV files', '*.csv'),
+                ('HDF5 files', '*.hdf5 *.hf'),
+                ('All files', '*.*'))
     )
     if filename:
-        print("Selected file:", filename)
+        print(f'File selected: {filename}')
+    if filename.endswith('.csv'):
+        try:
+            waveforms = pd.read_csv(filename).to_numpy()
+            n = len(waveforms)
+            sampling_rate = 100
+            component_order = ['Channel']
+        except:
+            messagebox.showerror('Error', 'Failed to open .csv {filename}')
+    elif filename.endswith('.hdf5') or filename.endswith('.hdf'):
+        try:
+            with h5py.File(filename) as file:
+                dataset = file['data/bucket0']
+                waveforms = dataset[:,0,:]
+                sampling_rate = file['data_format/sampling_rate'][()]
+                component_order = file['data_format/component_order'][()]
+                n = waveforms.shape[0] 
+        except:
+            messagebox.showerror('Error', 'Failed to open .hdf5 {filename}')
     else:
-        print('No file selected')
+        messagebox.showwarning('Error', 'No file selected or unsupported file format')
+    try:
+        labels = pd.read_csv(f'{filename}_marked.csv')
+    except:
+        labels = np.full(n, -1)
+    try:
+        marked_positions = pd.read_csv(f'{filename}_marked.csv')
+        labels = marked_positions['marked_point'].to_numpy()
+        unlabeled = marked_positions[marked_positions['marked_point'] == -1]
+        current_index = unlabeled.index[0]
+        redraw_plot()
+    except:
+        current_index = 0
 
 #functions for navigating waveforms
 def prev_waveform():
@@ -106,7 +157,7 @@ def save_labels_csv():
     marked_positions = pd.DataFrame({
         'marked_point': labels
     })
-    marked_positions.to_csv('marked_positions.csv', index=False)
+    marked_positions.to_csv(f'{filename}_marked.csv', index=False)
 
 #updates the function os that if the index is at 0 or n, blanks out the buttons
 def update_button_states():
@@ -120,6 +171,7 @@ def update_button_states():
     else:
         next_btn.config(state=tk.NORMAL)
 
+#draws a dotted red line so that user knows where approximate mark will be
 def on_mouse_move(event):
     global cursor_line
     if event.inaxes and event.xdata is not None:
@@ -130,6 +182,11 @@ def on_mouse_move(event):
             print("Error updating cursor line:", e)
 
 
+def on_close():
+    root.destroy()
+    sys.exit()
+
+root.protocol("WM_DELETE_WINDOW", on_close)
 
 # Instructions frame (static height)
 top_frame = tk.Frame(root)
