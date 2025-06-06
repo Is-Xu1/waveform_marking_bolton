@@ -37,7 +37,7 @@ elif filename.endswith('.hdf5') or filename.endswith('.hdf'):
     try:
         with h5py.File(filename) as file:
             dataset = file['data/bucket0']
-            waveforms = dataset[:,0,:]
+            waveforms = dataset[:]
             sampling_rate = file['data_format/sampling_rate'][()]
             component_order = file['data_format/component_order'][()]
             n = waveforms.shape[0]
@@ -83,21 +83,22 @@ def on_click(event):
 def redraw_plot():
     global cursor_line
     ax.clear()
-    ax.plot(waveforms[current_index])
-
+    waveform = waveforms[current_index]
+    for i, component in enumerate(component_order):
+        ax.plot(waveform[i], label=component)
     if labels[current_index] != -1:
         ax.axvline(labels[current_index], color='red', linestyle='-')
         cursor_line = ax.axvline(labels[current_index], color='red', linestyle='--', alpha=0.4)
     else:
         # Create a faint red line at x=0 to start, store reference
         cursor_line = ax.axvline(0, color='red', linestyle='--', alpha=0.4)
-
+    ax.legend()
     ax.set_title(f"Waveform {current_index+1}/{n}")
     canvas.draw()
     update_button_states()
 
 def uploadfile():
-    global labels, current_index
+    global labels, current_index, component_order, sampling_rate
     filename = filedialog.askopenfilename(
         title='Open waveform file',
         filetypes=(('All supported', '*.csv *.hdf5 *.h5'),
@@ -119,7 +120,7 @@ def uploadfile():
         try:
             with h5py.File(filename) as file:
                 dataset = file['data/bucket0']
-                waveforms = dataset[:,0,:]
+                waveforms = dataset[:]
                 sampling_rate = file['data_format/sampling_rate'][()]
                 component_order = file['data_format/component_order'][()]
                 n = waveforms.shape[0] 
