@@ -8,9 +8,12 @@ import sys
 from obspy import read
 import os
 from pathlib import Path
+from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
+
 
 # Global state variables
-global waveforms, labels, n, label_df, foldername, file_name
+global waveforms, labels, n, label_df, foldername, file_name, zoom_limits
+zoom_limits = {"xlim": None, "ylim": None}
 waveforms = []
 labels = []
 n = 0
@@ -116,7 +119,7 @@ def on_click(event):
         redraw_plot()
 
 def redraw_plot():
-    global cursor_line
+    global cursor_line, zoom_limits
     ax.clear()
     waveform = waveforms[current_index]
     ax.plot(waveform, label='Waveform')
@@ -127,6 +130,12 @@ def redraw_plot():
         cursor_line = ax.axvline(0, color='red', linestyle='--', alpha=0.4)
     ax.legend()
     ax.set_title(f"Waveform {current_index + 1}/{n}")
+    if zoom_limits["xlim"]:
+        ax.set_xlim(zoom_limits["xlim"])
+    else:
+        # Set default full view for x-axis and auto y-axis
+        ax.set_xlim(0, len(waveform))
+        ax.autoscale(axis='y')
     canvas.draw()
     update_button_states()
 
@@ -176,6 +185,20 @@ def on_mouse_move(event):
         except Exception as e:
             print("Cursor update error:", e)
 
+def on_scroll(event):
+    global zoom_limits
+    if event.inaxes is None:
+        return
+    ax = event.inaxes
+    scale_factor = 1.2 if event.button == 'up' else 0.8
+
+    xlim = ax.get_xlim()
+    x_center = event.xdata
+    new_xlim = [x_center + (x - x_center) * scale_factor for x in xlim]
+    ax.set_xlim(new_xlim)
+    zoom_limits['xlim'] = new_xlim
+    canvas.draw_idle()
+
 def on_close():
     root.destroy()
     sys.exit()
@@ -214,6 +237,13 @@ save_btn.pack(side=tk.LEFT, padx=5)
 
 file_btn = tk.Button(controls, text="Import File", command=uploadfile, width=12, height=2)
 file_btn.pack(side=tk.LEFT, padx=5)
+canvas.mpl_connect('scroll_event', on_scroll)
+
+toolbar = NavigationToolbar2Tk(canvas, root)
+toolbar.update()
+toolbar.pack(side=tk.TOP, fill=tk.X)
+
+
 
 redraw_plot()
 update_button_states()
