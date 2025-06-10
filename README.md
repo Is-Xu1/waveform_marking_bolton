@@ -11,3 +11,5 @@ The script treats each trace in the stream as separate for marking, it takes in 
 data/experiment_name/run_num/.mseed_files_here for the automatic labeling to be accurate. The output csv will be named p_picks_foldername.csv where foldername is the name of the folder
 selected and in the csv there are two columns, one is the marked x position in the original x axis and the other is the label for the exact experiment, run number, and trace number to 
 idenitify which pick corresponds to which trace. 
+<br>
+there are two files, one for reading a folder full of data, and another for individual files
