@@ -8,9 +8,12 @@ import sys
 from obspy import read
 import os
 from pathlib import Path
+from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
+
 
 # Global state variables
-global waveforms, labels, n, label_df, foldername, file_name
+global waveforms, labels, n, label_df, foldername, file_name, zoom_limits
+zoom_limits = {"xlim": None, "ylim": None}
 waveforms = []
 labels = []
 n = 0
@@ -22,7 +25,7 @@ label_exists = False
 
 # Helper function to load waveform data
 def load_waveform_data(path):
-    global waveforms, labels, n, label_df, foldername, file_name, label_exists, current_index
+    global waveforms, labels, n, label_df, foldername, file_name, label_exists, current_index, filename
 
     waveforms = []
     label_names = []
@@ -40,8 +43,13 @@ def load_waveform_data(path):
         parts = file_name.split('_')
         event_id = '_'.join(parts[:2])
         trace_labels = np.array([f'p_picks_{exp_name}_{run_num}_{event_id}_trace{i+1}' for i in range(n)])
+        filename = f'{exp_name}_{run_num}_{event_id}'
         try:
-            label_df = pd.read_csv(f'p_picks_{file_name}.csv')
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            folder = 'picks_folder'
+            folder_path = os.path.join(script_dir, folder)
+            file_path = os.path.join(folder_path,f'p_picks_{filename}.csv')
+            label_df = pd.read_csv(file_path)
             labels = label_df['marked_point'].to_numpy()
             unlabeled = label_df[label_df['marked_point'] == -1]
             current_index = unlabeled.index[0] if not unlabeled.empty else 0
@@ -111,7 +119,7 @@ def on_click(event):
         redraw_plot()
 
 def redraw_plot():
-    global cursor_line
+    global cursor_line, zoom_limits
     ax.clear()
     waveform = waveforms[current_index]
     ax.plot(waveform, label='Waveform')
@@ -122,6 +130,12 @@ def redraw_plot():
         cursor_line = ax.axvline(0, color='red', linestyle='--', alpha=0.4)
     ax.legend()
     ax.set_title(f"Waveform {current_index + 1}/{n}")
+    if zoom_limits["xlim"]:
+        ax.set_xlim(zoom_limits["xlim"])
+    else:
+        # Set default full view for x-axis and auto y-axis
+        ax.set_xlim(0, len(waveform))
+        ax.autoscale(axis='y')
     canvas.draw()
     update_button_states()
 
@@ -146,10 +160,17 @@ def next_waveform():
         redraw_plot()
 
 def save_labels_csv():
-    filename = f'p_picks_{foldername}.csv' if os.path.isdir(path) else f'p_picks_{file_name}.csv'
+    global filename
+    filename1 = f'p_picks_{foldername}.csv' if os.path.isdir(path) else f'p_picks_{filename}.csv'
     label_df['marked_point'] = labels
-    label_df.to_csv(filename, index=False)
-    messagebox.showinfo('File saved', f'Saved to {filename}')
+
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    folder = 'picks_folder'
+    folder_path = os.path.join(script_dir, folder)
+    os.makedirs(folder_path, exist_ok=True)
+    file_path = os.path.join(folder_path,filename1)
+    label_df.to_csv(file_path, index=False)
+    messagebox.showinfo('File saved', f'Saved as {filename} at {folder_path}')
 
 def update_button_states():
     prev_btn.config(state=tk.DISABLED if current_index <= 0 else tk.NORMAL)
@@ -163,6 +184,20 @@ def on_mouse_move(event):
             canvas.draw_idle()
         except Exception as e:
             print("Cursor update error:", e)
+
+def on_scroll(event):
+    global zoom_limits
+    if event.inaxes is None:
+        return
+    ax = event.inaxes
+    scale_factor = 1.2 if event.button == 'up' else 0.8
+
+    xlim = ax.get_xlim()
+    x_center = event.xdata
+    new_xlim = [x_center + (x - x_center) * scale_factor for x in xlim]
+    ax.set_xlim(new_xlim)
+    zoom_limits['xlim'] = new_xlim
+    canvas.draw_idle()
 
 def on_close():
     root.destroy()
@@ -202,6 +237,13 @@ save_btn.pack(side=tk.LEFT, padx=5)
 
 file_btn = tk.Button(controls, text="Import File", command=uploadfile, width=12, height=2)
 file_btn.pack(side=tk.LEFT, padx=5)
+canvas.mpl_connect('scroll_event', on_scroll)
+
+toolbar = NavigationToolbar2Tk(canvas, root)
+toolbar.update()
+toolbar.pack(side=tk.TOP, fill=tk.X)
+
+
 
 redraw_plot()
 update_button_states()
