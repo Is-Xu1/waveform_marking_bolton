@@ -60,6 +60,7 @@ def load_waveform_data(path):
 
     elif os.path.isdir(path):
         foldername = os.path.basename(path)
+        file_name = foldername
         try:
             try:
                 label_df = pd.read_csv(f'p_picks_{foldername}.csv')
@@ -130,8 +131,9 @@ def redraw_plot():
         cursor_line = ax.axvline(0, color='red', linestyle='--', alpha=0.4)
     ax.legend()
     ax.set_title(f"Waveform {current_index + 1}/{n}")
-    if zoom_limits["xlim"]:
+    if zoom_limits["xlim"] or zoom_limits['ylim']:
         ax.set_xlim(zoom_limits["xlim"])
+        ax.set_xlim(zoom_limits['ylim'])
     else:
         # Set default full view for x-axis and auto y-axis
         ax.set_xlim(0, len(waveform))
@@ -193,10 +195,15 @@ def on_scroll(event):
     scale_factor = 1.2 if event.button == 'up' else 0.8
 
     xlim = ax.get_xlim()
+    ylim = ax.get_ylim()
+    y_center = event.ydata
     x_center = event.xdata
     new_xlim = [x_center + (x - x_center) * scale_factor for x in xlim]
+    new_ylim = [y_center + (y - y_center) * scale_factor for y in xlim]
     ax.set_xlim(new_xlim)
+    #ax.set_ylim(new_ylim)
     zoom_limits['xlim'] = new_xlim
+    #zoom_limits['ylim'] = new_ylim
     canvas.draw_idle()
 
 def on_close():
@@ -212,7 +219,8 @@ top_frame.pack(fill='x', pady=10)
 
 instruction_label = tk.Label(
     top_frame,
-    text="Click on the waveform to mark a point of interest.\nUse Next/Previous to navigate. Save to export labels.",
+    text=f"Click on the waveform to mark a point of interest.\nUse Next/Previous to navigate. Save to export labels.\
+        \nCurrent file = {file_name}",
     justify='center', font=("Arial", 15), anchor='center')
 instruction_label.pack(anchor='center')
 
