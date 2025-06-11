@@ -58,6 +58,7 @@ def load_waveform_data(path):
             labels = np.full(n, -1)
             label_df = pd.DataFrame({'Name': trace_labels, 'marked_point': labels})
 
+
     elif os.path.isdir(path):
         foldername = os.path.basename(path)
         file_name = foldername
@@ -94,6 +95,7 @@ def load_waveform_data(path):
             if not label_exists:
                 labels = np.full(n, -1)
                 label_df = pd.DataFrame({'Name': label_names, 'marked_point': labels})
+
         except Exception as e:
             messagebox.showerror('Error opening folder', f'Unable to open {path}, Error: {str(e)}')
 
@@ -103,6 +105,13 @@ root.title('Waveform Labeling')
 root.geometry("1000x800")
 root.minsize(1000, 800)
 
+root.withdraw()
+top_frame = tk.Frame(root)
+top_frame.pack(fill='x', pady=10)
+
+file_label = tk.Label(top_frame, text="", wraplength=900, justify='center', font=("Arial", 12), fg="blue")
+file_label.pack(anchor='center', pady=(5, 10))
+
 path = filedialog.askopenfilename(title='Select waveform file or folder')
 if not path:
     messagebox.showwarning('No file selected', 'You must select a waveform file or folder.')
@@ -110,14 +119,30 @@ if not path:
     sys.exit()
 else:
     load_waveform_data(path)
+    file_label.config(text=f"Loaded: {file_name}")
+    root.deiconify()
 
 # Event and drawing logic
 def on_click(event):
-    global labels
+    global labels,current_index
     if event.inaxes and event.xdata is not None:
         ix = int(event.xdata)
         labels[current_index] = ix
+        '''if current_index != len(waveforms)-1:
+            current_index += 1'''
         redraw_plot()
+
+def go_to_index():
+    global current_index
+    try:
+        idx = int(goto_entry.get())
+        if 0 < idx <= n:
+            current_index = idx -1
+            redraw_plot()
+        else:
+            messagebox.showwarning("Invalid index", f"Please enter a number between 0 and {n-1}")
+    except ValueError:
+        messagebox.showwarning("Invalid input", "Please enter a valid integer")
 
 def redraw_plot():
     global cursor_line, zoom_limits
@@ -129,7 +154,6 @@ def redraw_plot():
         cursor_line = ax.axvline(labels[current_index], color='red', linestyle='--', alpha=0.4)
     else:
         cursor_line = ax.axvline(0, color='red', linestyle='--', alpha=0.4)
-    ax.legend()
     ax.set_title(f"Waveform {current_index + 1}/{n}")
     if zoom_limits["xlim"] or zoom_limits['ylim']:
         ax.set_xlim(zoom_limits["xlim"])
@@ -148,6 +172,8 @@ def uploadfile():
         load_waveform_data(new_path)
         current_index = 0
         redraw_plot()
+        file_label.config(text=f"Loaded: {file_name}")
+
 
 def prev_waveform():
     global current_index
@@ -214,16 +240,12 @@ root.protocol("WM_DELETE_WINDOW", on_close)
 
 # GUI Layout
 
-top_frame = tk.Frame(root)
-top_frame.pack(fill='x', pady=10)
 
 instruction_label = tk.Label(
     top_frame,
-    text=f"Click on the waveform to mark a point of interest.\nUse Next/Previous to navigate. Save to export labels.\
-        \nCurrent file = {file_name}",
+    text=f"Click on the waveform to mark a point of interest.\nUse Next/Previous to navigate. Save to export labels.",
     justify='center', font=("Arial", 15), anchor='center')
 instruction_label.pack(anchor='center')
-
 fig, ax = plt.subplots()
 canvas = FigureCanvasTkAgg(fig, master=root)
 canvas_widget = canvas.get_tk_widget()
@@ -247,10 +269,14 @@ file_btn = tk.Button(controls, text="Import File", command=uploadfile, width=12,
 file_btn.pack(side=tk.LEFT, padx=5)
 canvas.mpl_connect('scroll_event', on_scroll)
 
+goto_btn = tk.Button(controls, text="Go", command=go_to_index, width=6, height=2)
+goto_btn.pack(side=tk.LEFT, padx=5)
+
+goto_entry = tk.Entry(controls, width=6)
+goto_entry.pack(side=tk.LEFT, padx=5)
 toolbar = NavigationToolbar2Tk(canvas, root)
 toolbar.update()
 toolbar.pack(side=tk.TOP, fill=tk.X)
-
 
 
 redraw_plot()
