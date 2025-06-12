@@ -125,6 +125,8 @@ else:
 # Event and drawing logic
 def on_click(event):
     global labels,current_index
+    if getattr(canvas.toolbar, 'mode', '') != '':
+        return
     if event.inaxes and event.xdata is not None:
         ix = int(event.xdata)
         labels[current_index] = ix
@@ -157,7 +159,7 @@ def redraw_plot():
     ax.set_title(f"Waveform {current_index + 1}/{n}")
     if zoom_limits["xlim"] or zoom_limits['ylim']:
         ax.set_xlim(zoom_limits["xlim"])
-        ax.set_xlim(zoom_limits['ylim'])
+        ax.set_ylim(zoom_limits['ylim'])
     else:
         # Set default full view for x-axis and auto y-axis
         ax.set_xlim(0, len(waveform))
@@ -217,20 +219,43 @@ def on_scroll(event):
     global zoom_limits
     if event.inaxes is None:
         return
-    ax = event.inaxes
-    scale_factor = 1.2 if event.button == 'up' else 0.8
 
+    ax = event.inaxes
     xlim = ax.get_xlim()
     ylim = ax.get_ylim()
-    y_center = event.ydata
-    x_center = event.xdata
-    new_xlim = [x_center + (x - x_center) * scale_factor for x in xlim]
-    new_ylim = [y_center + (y - y_center) * scale_factor for y in xlim]
-    ax.set_xlim(new_xlim)
-    #ax.set_ylim(new_ylim)
-    zoom_limits['xlim'] = new_xlim
-    #zoom_limits['ylim'] = new_ylim
+
+    # Different scale factors for X and Y for better control
+    scale_x = 1.2 if event.button == 'up' else 0.8
+    scale_y = 1.05 if event.button == 'up' else 0.95
+
+    # Get mouse position
+    xdata = event.xdata
+    ydata = event.ydata
+
+    # Modifier key check
+    ctrl_pressed = event.key == 'control'
+
+    if ctrl_pressed and ydata is not None:
+        # Zoom Y only
+        new_ylim = [ydata + (y - ydata) * scale_y for y in ylim]
+        ax.set_ylim(new_ylim)
+        zoom_limits['ylim'] = new_ylim
+    elif xdata is not None:
+        # Zoom X only
+        new_xlim = [xdata + (x - xdata) * scale_x for x in xlim]
+        ax.set_xlim(new_xlim)
+        zoom_limits['xlim'] = new_xlim
+
     canvas.draw_idle()
+
+
+
+
+
+def on_draw(event):
+    global zoom_limits
+    zoom_limits["xlim"] = ax.get_xlim()
+    zoom_limits["ylim"] = ax.get_ylim()
 
 def on_close():
     root.destroy()
@@ -243,7 +268,8 @@ root.protocol("WM_DELETE_WINDOW", on_close)
 
 instruction_label = tk.Label(
     top_frame,
-    text=f"Click on the waveform to mark a point of interest.\nUse Next/Previous to navigate. Save to export labels.",
+    text=f"Click on the waveform to mark a point of interest.\nUse Next/Previous to navigate. Save to export labels.\
+        \nScroll or use Nav bar to zoom in/out, default only on x axis, hold ctrl for y axis zoom",
     justify='center', font=("Arial", 15), anchor='center')
 instruction_label.pack(anchor='center')
 fig, ax = plt.subplots()
@@ -272,6 +298,7 @@ canvas.mpl_connect('scroll_event', on_scroll)
 goto_btn = tk.Button(controls, text="Go", command=go_to_index, width=6, height=2)
 goto_btn.pack(side=tk.LEFT, padx=5)
 
+canvas.mpl_connect('draw_event', on_draw)
 goto_entry = tk.Entry(controls, width=6)
 goto_entry.pack(side=tk.LEFT, padx=5)
 toolbar = NavigationToolbar2Tk(canvas, root)
