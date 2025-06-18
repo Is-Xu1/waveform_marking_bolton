@@ -82,12 +82,13 @@ class ResidualViewer:
 
     def parse_path_from_name(self, name):
         print(f"Parsing name: {name}")
-        match = re.search(r'Exp_(T\d+)_Run(\d+)_EventID_(\d+)', name)
+        match = re.search(r'Exp_(T\d+)_(Run\d+(?:_Traces)?)_EventID_(\d+)', name)
         if not match:
             print("Regex match failed.")
             return None
+
         exp, run, event = match.groups()
-        folder_path = os.path.join(self.folder, f"Exp_{exp}", f"Run{run}")
+        folder_path = os.path.join(self.folder, f"Exp_{exp}", run)
         file_name = f"EventID_{event}_WindowSize_0.05s_Data.mseed"
         full_path = os.path.join(folder_path, file_name)
         print(f"Constructed path: {full_path}")
@@ -100,26 +101,39 @@ class ResidualViewer:
 
         row = filtered.iloc[self.index]
         name = row['Name']
-        self.label.config(text=f"Viewing: {name} | Residual: {row['max_residual']:.1f}")
-
         mseed_path = self.parse_path_from_name(name)
+
         if not mseed_path or not os.path.isfile(mseed_path):
             print(f"File not found: {mseed_path}")
             messagebox.showwarning("File Not Found", f"Could not locate .mseed for: {name}")
             return
 
+        basename = os.path.basename(mseed_path)
+        self.label.config(text=f"Viewing: {name} | Residual: {row['max_residual']:.1f} | File: {basename}")
+
         try:
             st = read(mseed_path)
             print(f"Read {len(st)} trace(s) from {mseed_path}")
-            tr = st[0]
+
+            # Extract trace index from 'traceN'
+            trace_match = re.search(r'trace(\d+)', name)
+            trace_index = int(trace_match.group(1)) - 1 if trace_match else 0
+            print(f"Using trace index: {trace_index} from name: {name}")
+
+            if trace_index >= len(st):
+                print(f"Trace index {trace_index} out of range. Stream has {len(st)} traces.")
+                messagebox.showerror("Error", f"Trace index {trace_index} not found in file.")
+                return
+
+            tr = st[trace_index]
             data = tr.data
             t = np.arange(len(data)) / tr.stats.sampling_rate
+
         except Exception as e:
             print(f"Error reading waveform: {e}")
             messagebox.showerror("Error", f"Failed to read waveform: {e}")
             return
 
-        # Plotting
         self.ax.clear()
         self.ax.plot(t, data, label='Waveform', alpha=0.7)
         self.ax.axvline(row['marked_point_hand'] / tr.stats.sampling_rate, color='r', label='Hand')
