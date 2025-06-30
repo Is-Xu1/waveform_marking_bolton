@@ -22,4 +22,6 @@ If a folder is selected:
 The output csv will be named p_picks_folder name.csv
 <br>
 These csv files will be saved in the same directory as the python script, the output csv will have two columns: Name, and marked_point, the name will be "p_picks_Exp_num_Run_num_EventID_num_trace#" and marked_point is an integer where the x axis was marked by the user
+![Logo](images/image.png)
+![Logo](images/image1.png)
 
