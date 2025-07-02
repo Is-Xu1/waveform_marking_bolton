@@ -14,7 +14,6 @@ The script treats each trace in the stream as separate for marking, it takes in 
 data/experiment_name/run_num/.mseed_files_here for the automatic labeling to be accurate. 
 <br>
 ### If a file is selected:
-<br>
 The output csv will be named p_picks_experiment name_run number_event id_trace#.csv 
 <br>
 ### If a folder is selected:
