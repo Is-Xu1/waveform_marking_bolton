@@ -17,7 +17,6 @@ data/experiment_name/run_num/.mseed_files_here for the automatic labeling to be 
 The output csv will be named p_picks_experiment name_run number_event id_trace#.csv 
 <br>
 ### If a folder is selected:
-<br>
 The output csv will be named p_picks_folder name.csv
 <br>
 These csv files will be saved in the same directory as the python script, the output csv will have two columns: Name, and marked_point, the name will be "p_picks_Exp_num_Run_num_EventID_num_trace#" and marked_point is an integer where the x axis was marked by the user
