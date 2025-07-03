@@ -22,11 +22,13 @@ current_index = 0
 label_exists = False
 new_path = ""
 trace_file_paths = []
-
+trace_metadata = []
 
 def load_waveform_data(path):
     global waveforms, labels, n, label_df, foldername, file_name, label_exists, current_index, filename, zoom_limits
     waveforms = []
+    trace_file_paths.clear()
+    trace_metadata.clear()
     label_names = []
     label_exists = False
     zoom_limits = {"xlim": None, "ylim": None}
@@ -81,9 +83,13 @@ def load_waveform_data(path):
                         event_id = '_'.join(file_base.split('_')[:2])
                         for i, tr in enumerate(st):
                             waveforms.append(tr.data)
-                            trace_file_paths.append(full_path)  # <-- Add this line
-                            if not label_exists:
-                                label_names.append(f'p_picks_{exp_name}_{run_num}_{event_id}_trace{i+1}')
+                            trace_file_paths.append(full_path)
+                            trace_metadata.append(f"Experiment: {exp_name}, Run: {run_num}, Trace: trace{i+1}")
+                        if not label_exists:
+                            for i in range(len(st)):
+                                local_trace_number = i + 1
+                                trace_label = f'p_picks_{exp_name}_{run_num}_{event_id}_trace{local_trace_number}'
+                                label_names.append(trace_label)
                     except Exception as e:
                         print(f"Skipped {full_path}: {e}")
             n = len(waveforms)
@@ -93,42 +99,135 @@ def load_waveform_data(path):
         except Exception as e:
             messagebox.showerror('Error', f'Unable to open folder: {str(e)}')
 
+def rollout_viewer():
+    def load_new_rollout():
+        new_path = filedialog.askopenfilename(title='Select a .mseed file for rollout')
+        if not new_path:
+            return
+        try:
+            st = read(new_path)
+            traces = [tr.data for tr in st]
+            ax_rollout.clear()
+            offset = 5
+            for i, tr in enumerate(traces):
+                ax_rollout.plot(tr + i * offset, label=f"Trace {i+1}")
+            ax_rollout.set_title(f"Rollout: {os.path.basename(new_path)} (offset by 5)")
+            ax_rollout.set_xlabel("Sample Index")
+            ax_rollout.set_ylabel("Amplitude + Offset")
+            ax_rollout.legend(loc='upper right', fontsize='small')
+            canvas_rollout.draw()
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+
+    rollout_path = filedialog.askopenfilename(title='Select a .mseed file for rollout')
+    if not rollout_path:
+        return
+    try:
+        st = read(rollout_path)
+        traces = [tr.data for tr in st]
+        rollout_win = tk.Toplevel(root)
+        rollout_win.title(f"Rollout: {os.path.basename(rollout_path)}")
+        rollout_win.geometry("1000x800")
+        fig_rollout, ax_rollout = plt.subplots()
+        canvas_rollout = FigureCanvasTkAgg(fig_rollout, master=rollout_win)
+        canvas_rollout.get_tk_widget().pack(fill='both', expand=True)
+        offset = 5
+        for i, tr in enumerate(traces):
+            ax_rollout.plot(tr + i * offset, label=f"Trace {i+1}")
+        ax_rollout.set_title(f"Rollout: {os.path.basename(rollout_path)} (offset by 5)")
+        ax_rollout.set_xlabel("Sample Index")
+        ax_rollout.set_ylabel("Amplitude + Offset")
+        ax_rollout.legend(loc='upper right', fontsize='small')
+        canvas_rollout.draw()
+        toolbar_rollout = NavigationToolbar2Tk(canvas_rollout, rollout_win)
+        toolbar_rollout.update()
+        toolbar_rollout.pack(side=tk.TOP, fill=tk.X)
+        load_button_frame = tk.Frame(rollout_win)
+        load_button_frame.pack(pady=10)
+        load_btn = tk.Button(load_button_frame, text="Load .mseed", command=load_new_rollout, width=15)
+        load_btn.pack()
+    except Exception as e:
+        messagebox.showerror("Error", str(e))
+
+
 def redraw_plot():
     global cursor_line, zoom_limits
     waveform = waveforms[current_index]
-
-    # Save current limits (if already set)
     current_xlim = ax.get_xlim() if zoom_limits["xlim"] else (0, len(waveform))
     current_ylim = ax.get_ylim() if zoom_limits["ylim"] else (waveform.min(), waveform.max())
-
     ax.clear()
     ax.plot(waveform, label='Waveform')
-
     if labels[current_index] != -1:
         ax.axvline(labels[current_index], color='red', linestyle='-', label='Marked Point')
         cursor_line = ax.axvline(labels[current_index], color='red', linestyle='--', alpha=0.4)
     else:
         cursor_line = ax.axvline(0, color='red', linestyle='--', alpha=0.4)
-
     ax.set_title(f"Waveform {current_index + 1}/{n}")
     ax.set_xlim(current_xlim)
     ax.set_ylim(current_ylim)
+    fig.tight_layout()
     canvas.draw()
-
-    # Update zoom limits to reflect any panning/scrolling
     zoom_limits["xlim"] = ax.get_xlim()
     zoom_limits["ylim"] = ax.get_ylim()
-
-    # Update trace label (no trace number shown)
     if trace_file_paths:
         file_label.config(text=f"File: {os.path.basename(trace_file_paths[current_index])}")
     else:
         file_label.config(text=f"Source: {file_name}")
-
+    if trace_metadata:
+        metadata_label.config(text=trace_metadata[current_index])
+    else:
+        metadata_label.config(text="")
     update_button_states()
 
+def rollout_viewer():
+    def load_new_rollout():
+        new_path = filedialog.askopenfilename(title='Select a .mseed file for rollout')
+        if not new_path:
+            return
+        try:
+            st = read(new_path)
+            traces = [tr.data for tr in st]
+            ax_rollout.clear()
+            offset = 5
+            for i, tr in enumerate(traces):
+                ax_rollout.plot(tr + i * offset, label=f"Trace {i+1}")
+            ax_rollout.set_title(f"Rollout: {os.path.basename(new_path)} (offset by 5)")
+            ax_rollout.set_xlabel("Sample Index")
+            ax_rollout.set_ylabel("Amplitude + Offset")
+            ax_rollout.legend(loc='upper right', fontsize='small')
+            canvas_rollout.draw()
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
 
-
+    rollout_path = filedialog.askopenfilename(title='Select a .mseed file for rollout')
+    if not rollout_path:
+        return
+    try:
+        st = read(rollout_path)
+        traces = [tr.data for tr in st]
+        rollout_win = tk.Toplevel(root)
+        rollout_win.title(f"Rollout: {os.path.basename(rollout_path)}")
+        rollout_win.geometry("1000x800")
+        fig_rollout, ax_rollout = plt.subplots()
+        canvas_rollout = FigureCanvasTkAgg(fig_rollout, master=rollout_win)
+        canvas_rollout.get_tk_widget().pack(fill='both', expand=True)
+        offset = 5
+        for i, tr in enumerate(traces):
+            ax_rollout.plot(tr + i * offset, label=f"Trace {i+1}")
+        ax_rollout.set_title(f"Rollout: {os.path.basename(rollout_path)} (offset by 5)")
+        ax_rollout.set_xlabel("Sample Index")
+        ax_rollout.set_ylabel("Amplitude + Offset")
+        ax_rollout.legend(loc='upper right', fontsize='small')
+        canvas_rollout.draw()
+        toolbar_rollout = NavigationToolbar2Tk(canvas_rollout, rollout_win)
+        toolbar_rollout.update()
+        toolbar_rollout.pack(side=tk.TOP, fill=tk.X)
+        load_button_frame = tk.Frame(rollout_win)
+        load_button_frame.pack(pady=10)
+        load_btn = tk.Button(load_button_frame, text="Load .mseed", command=load_new_rollout, width=15)
+        load_btn.pack()
+    except Exception as e:
+        messagebox.showerror("Error", str(e))
 
 def uploadfile(folder=False):
     global current_index, new_path
@@ -171,7 +270,6 @@ def save_labels_csv():
     label_df.to_csv(file_path, index=False)
     messagebox.showinfo('Saved', f'Saved as {filename1} in {script_dir}')
 
-
 def update_button_states():
     prev_btn.config(state=tk.DISABLED if current_index <= 0 else tk.NORMAL)
     next_btn.config(state=tk.DISABLED if current_index >= n - 1 else tk.NORMAL)
@@ -196,7 +294,6 @@ def reset_zoom():
     zoom_limits = {"xlim": None, "ylim": None}
     redraw_plot()
 
-
 def on_scroll(event):
     if event.inaxes is None:
         return
@@ -218,45 +315,27 @@ def on_draw(event):
     zoom_limits["xlim"] = ax.get_xlim()
     zoom_limits["ylim"] = ax.get_ylim()
 
-def rollout_viewer():
-    rollout_path = filedialog.askopenfilename(title='Select a .mseed file for rollout')
-    if not rollout_path:
-        return
-    try:
-        st = read(rollout_path)
-        traces = [tr.data for tr in st]
-        rollout_win = tk.Toplevel(root)
-        rollout_win.title(f"Rollout: {os.path.basename(rollout_path)}")
-        rollout_win.geometry("1000x800")
-        fig_r, ax_r = plt.subplots()
-        canvas_r = FigureCanvasTkAgg(fig_r, master=rollout_win)
-        canvas_r.get_tk_widget().pack(fill='both', expand=True)
-        for i, tr in enumerate(traces):
-            ax_r.plot(tr + i * 5, label=f"Trace {i+1}")
-        ax_r.set_title("Rollout (offset by 5)")
-        ax_r.legend(fontsize='small')
-        canvas_r.draw()
-        toolbar_r = NavigationToolbar2Tk(canvas_r, rollout_win)
-        toolbar_r.update()
-        toolbar_r.pack(side=tk.TOP, fill=tk.X)
-    except Exception as e:
-        messagebox.showerror("Error", str(e))
-
 def on_close():
     root.destroy()
     sys.exit()
 
-# GUI Setup
+def on_resize(event):
+    if waveforms:
+        redraw_plot()
+
 root = tk.Tk()
 root.title("Waveform Labeling")
 root.geometry("1000x800")
 root.protocol("WM_DELETE_WINDOW", on_close)
+root.bind("<Configure>", on_resize)
 
 top_frame = tk.Frame(root)
 top_frame.pack(fill='x', pady=10)
 
 file_label = tk.Label(top_frame, text="", font=("Arial", 12), fg="blue")
 file_label.pack()
+metadata_label = tk.Label(top_frame, text="", font=("Arial", 11))
+metadata_label.pack()
 
 instruction = tk.Label(top_frame, text="Click to mark. Use Next/Previous. Scroll to zoom x. Ctrl+scroll for y.", font=("Arial", 13))
 instruction.pack()
@@ -282,7 +361,6 @@ next_btn = tk.Button(controls, text="Next", command=next_waveform, width=12)
 save_btn = tk.Button(controls, text="Save", command=save_labels_csv, width=12)
 goto_entry = tk.Entry(controls, width=6)
 goto_btn = tk.Button(controls, text="Go", command=go_to_index, width=6)
-
 reset_btn = tk.Button(controls, text="Reset Zoom", command=reset_zoom, width=12)
 reset_btn.pack(side=tk.LEFT, padx=5)
 prev_btn.pack(side=tk.LEFT, padx=5)
