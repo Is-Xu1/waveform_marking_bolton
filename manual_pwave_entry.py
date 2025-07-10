@@ -23,6 +23,8 @@ label_exists = False
 new_path = ""
 trace_file_paths = []
 trace_metadata = []
+ctrl_held = False
+
 
 def load_waveform_data(path):
     global waveforms, labels, n, label_df, foldername, file_name, label_exists, current_index, filename, zoom_limits
@@ -304,8 +306,8 @@ def on_scroll(event):
     scale_y = 1.05 if event.button == 'up' else 0.95
     xdata = event.xdata
     ydata = event.ydata
-    ctrl_pressed = event.key == 'control'
-    if ctrl_pressed and ydata is not None:
+
+    if ctrl_held and ydata is not None:
         ax.set_ylim([ydata + (y - ydata) * scale_y for y in ylim])
     elif xdata is not None:
         ax.set_xlim([xdata + (x - xdata) * scale_x for x in xlim])
@@ -323,11 +325,23 @@ def on_resize(event):
     if waveforms:
         redraw_plot()
 
+def on_ctrl_press(event):
+    global ctrl_held
+    ctrl_held = True
+
+def on_ctrl_release(event):
+    global ctrl_held
+    ctrl_held = False
+
+
 root = tk.Tk()
 root.title("Waveform Labeling")
 root.geometry("1000x800")
 root.protocol("WM_DELETE_WINDOW", on_close)
 root.bind("<Configure>", on_resize)
+root.bind_all("<Control_L>", on_ctrl_press)
+root.bind_all("<KeyRelease-Control_L>", on_ctrl_release)
+
 
 top_frame = tk.Frame(root)
 top_frame.pack(fill='x', pady=10)
