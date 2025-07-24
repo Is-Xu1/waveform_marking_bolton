@@ -2,7 +2,7 @@
 ## University of Texas at Austin
 Created by Isaac Xu and Dr. Chas Bolton
 # Download instructions
-Download python file and run requirements.txt 
+Download manual_pwave_entry.py and run requirements.txt 
 # Overview
 Created for marking p-wave arrivals for waveforms using manual user input, saves user clicked x axis positions as a separate csv file for further analysis. Also can visualize the rollout of an .mseed file, assuming separate channels are in the same .mseed file.
 This 
