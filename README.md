@@ -4,7 +4,8 @@ Created by Isaac Xu and Dr. Chas Bolton
 # Download instructions
 Download python file and run requirements.txt 
 # Overview
-Created for marking p-wave arrivals for waveforms using manual user input, saves user clicked x axis positions as a separate csv file for further analysis. Also can visualize the rollout of an .mseed file, assuming separate channels are in the same .mseed file. 
+Created for marking p-wave arrivals for waveforms using manual user input, saves user clicked x axis positions as a separate csv file for further analysis. Also can visualize the rollout of an .mseed file, assuming separate channels are in the same .mseed file.
+This 
 # Manual User Input Scripts
 manual_pwave_entry.py
 <br>
@@ -19,7 +20,9 @@ The output csv will be named p_picks_experiment name_run number_event id_trace#.
 ### If a folder is selected:
 The output csv will be named p_picks_folder name.csv
 <br>
-These csv files will be saved in the same directory as the python script, the output csv will have two columns: Name, and marked_point, the name will be "p_picks_Exp_num_Run_num_EventID_num_trace#" and marked_point is in a list (for multiple picks per trace) where the x axis was marked by the user
+These csv files will be saved in the same directory as the python script, the output csv will have two columns: Name, and marked_point, the name will be "p_picks_Exp_num_Run_num_EventID_num_trace#" and marked_point is in a list (for multiple picks per trace) where the x axis was marked by the user <br>
+example: a pick for the first trace for EventID 10 for Run7 for Experiment T007 will have a pick name of 
+p_picks_Exp_T007_EventID_10_trace1
 ![Logo](images/image.png)
 ![Logo](images/image1.png)
 <br>
