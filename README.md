@@ -20,6 +20,7 @@ The output csv will be named p_picks_experiment name_run number_event id_trace#.
 ### If a folder is selected:
 The output csv will be named p_picks_folder name.csv
 <br>
+<br>
 These csv files will be saved in the same directory as the python script, the output csv will have two columns: Name, and marked_point, the name will be "p_picks_Exp_num_Run_num_EventID_num_trace#" and marked_point is in a list (for multiple picks per trace) where the x axis was marked by the user <br>
 example: a pick for the first trace for EventID 10 for Run7 for Experiment T007 will have a pick name of 
 p_picks_Exp_T007_EventID_10_trace1
